@@ -1,14 +1,14 @@
 /**
- * Cloudflare Worker HTTP/HTTPS Proxy
- * 结合 Web UI 和标准 HTTP 代理协议
- * 支持多种调用方式：Web 界面、查询参数、路径方式、标准代理
+ * Cloudflare 代理程式 HTTP/HTTPS 代理
+ * 結合 Web UI 和標準 HTTP 代理協議
+ * 支援多種調用方式:Web 介面、查詢參數、路徑方式、標準代理
  */
 
 export default {
   async fetch(request) {
     const url = new URL(request.url);
 
-    // CORS 预检
+    // CORS 預檢
     if (request.method === 'OPTIONS') {
       return new Response(null, {
         headers: corsHeaders()
@@ -20,7 +20,7 @@ export default {
       return handleConnect(request);
     }
 
-    // 根路径 - 返回 Web UI
+    // 根路徑 - 返回 Web UI
     if (url.pathname === '/' || url.pathname === '') {
       return new Response(getRootHtml(), {
         headers: {
@@ -30,17 +30,17 @@ export default {
       });
     }
 
-    // 代理请求处理
+    // 代理請求處理
     return handleProxyRequest(request, url);
   }
 };
 
 /**
- * 处理 CONNECT 方法 (HTTPS 隧道)
+ * HTTP CONNECT 方法處理 (HTTPS 隧道)
  */
 function handleConnect(request) {
   return new Response(
-    'CONNECT method not supported. Use HTTP proxy mode instead.',
+    'CONNECT 方法不支援。使用 HTTP 代理模式 instead.',
     {
       status: 501,
       statusText: 'Not Implemented',
@@ -51,34 +51,37 @@ function handleConnect(request) {
     }
   );
 }
+    }
+  );
+}
 
 /**
- * 处理代理请求
+ * 處理代理請求
  */
 async function handleProxyRequest(request, url) {
   try {
-    // 方式 1: 查询参数 ?url=https://example.com
+    // 方式 1: 查詢參數 ?url=https://example.com
     let targetUrl = url.searchParams.get('url');
 
-    // 方式 2: 路径方式 /https://example.com 或 /example.com
+    // 方式 2: 路徑方式 /https://example.com 或 /example.com
     if (!targetUrl && url.pathname !== '/') {
       let path = decodeURIComponent(url.pathname.substring(1));
 
-      // 如果路径已经包含协议
+      // 如果路徑已經包含協議
       if (path.startsWith('http://') || path.startsWith('https://')) {
         targetUrl = path;
       } else {
-        // 自动添加协议
+        // 自動添加協議
         targetUrl = url.protocol + '//' + path;
       }
 
-      // 保留查询参数
+      // 保留查詢參數
       if (url.search) {
         targetUrl += url.search;
       }
     }
 
-    // 方式 3: 标准 HTTP 代理 - 完整 URL 作为请求目标
+    // 方式 3: 標準 HTTP 代理 - 完整的 URL 作為請求目標
     if (!targetUrl && (request.url.startsWith('http://') || request.url.startsWith('https://'))) {
       const host = request.headers.get('Host');
       if (host && !url.hostname.includes(host)) {
@@ -107,7 +110,7 @@ async function handleProxyRequest(request, url) {
       );
     }
 
-    // 验证目标 URL
+    // 驗證目標 URL
     let target;
     try {
       target = new URL(targetUrl);
@@ -128,21 +131,21 @@ async function handleProxyRequest(request, url) {
       );
     }
 
-    // 构建代理请求
+    // 建構代理請求
     const proxyHeaders = cleanHeaders(request.headers);
 
     const proxyRequest = new Request(target, {
       method: request.method,
       headers: proxyHeaders,
       body: ['GET', 'HEAD'].includes(request.method) ? null : request.body,
-      redirect: 'manual' // 手动处理重定向
+      redirect: 'manual' // 手動處理重新導向
     });
 
-    // 发起请求
+    // 發起請求
     const response = await fetch(proxyRequest);
     let body = response.body;
 
-    // 处理重定向
+    // 處理重新導向
     if ([301, 302, 303, 307, 308].includes(response.status)) {
       const location = response.headers.get('location');
       if (location) {
@@ -160,12 +163,12 @@ async function handleProxyRequest(request, url) {
       }
     }
 
-    // 处理 HTML 内容中的相对路径
+    // 處理 HTML 内容中的相对路徑
     if (response.headers.get('Content-Type')?.includes('text/html')) {
       body = await handleHtmlContent(response, url.protocol, url.host, target);
     }
 
-    // 返回响应
+    // 返回響應
     return new Response(body, {
       status: response.status,
       statusText: response.statusText,
@@ -195,26 +198,26 @@ async function handleProxyRequest(request, url) {
 }
 
 /**
- * 处理 HTML 内容中的相对路径
+ * 處理 HTML 內容中的相對路徑
  */
 async function handleHtmlContent(response, protocol, host, targetUrl) {
   const originalText = await response.text();
   const origin = targetUrl.origin;
 
-  // 替换相对路径：href="/" src="/" action="/"
-  const regex = /((href|src|action)=["'])\/((?!\/))/g;
+  // 替換相對路徑：href="/" src="/" action="/"
+  const regex = /((href|src|action)=["\'])\/(?(?!\/).)/g;
   const modifiedText = originalText.replace(regex, `$1${protocol}//${host}/${origin}/$3`);
 
   return modifiedText;
 }
 
 /**
- * 清理请求头 - 移除不应转发的头
+ * 清理請求头 - 移除不应轉發的头
  */
 function cleanHeaders(headers) {
   const cleaned = new Headers(headers);
 
-  // 移除 Cloudflare 和代理相关头
+    // 移除 Cloudflare 和代理相關頭
   const removeHeaders = [
     'cf-connecting-ip',
     'cf-ipcountry',
@@ -255,16 +258,16 @@ function noCacheHeaders() {
 }
 
 /**
- * 返回根目录的 HTML - 使用 Tailwind CSS Theme
+ * 返回根目錄的 HTML - 使用 Tailwind CSS Theme
  */
 function getRootHtml() {
   return `<!DOCTYPE html>
-<html lang="zh-CN" class="h-full">
+<html lang="zh-TW" class="h-full">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cloudflare Proxy - 全功能代理服务</title>
-  <meta name="description" content="基于 Cloudflare Workers 的全功能 HTTP/HTTPS 代理服务">
+  <title>Cloudflare Proxy - 全功能代理服務</title>
+  <meta name="description" content="基於 Cloudflare Workers 的全功能 HTTP/HTTPS 代理服務">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌐</text></svg>">
 
   <!-- Tailwind CSS CDN -->
@@ -334,23 +337,23 @@ function getRootHtml() {
             <div class="relative px-4 sm:px-8 lg:px-12">
               <div class="mx-auto max-w-2xl lg:max-w-5xl">
 
-                <!-- 标题区域 -->
+                <!-- 標題區域 -->
                 <div class="max-w-2xl">
                   <div class="text-6xl mb-6">🌐</div>
                   <h1 class="text-4xl font-bold tracking-tight text-zinc-800 sm:text-5xl dark:text-zinc-100">
                     Cloudflare Proxy
                   </h1>
-                  <p class="mt-6 text-base text-zinc-600 dark:text-zinc-400">
-                    基于 Cloudflare Workers 的全功能 HTTP/HTTPS 代理服务，支持多种访问方式，完全免费且易于使用。
-                  </p>
+                   <p class="mt-6 text-base text-zinc-600 dark:text-zinc-400">
+                     基於 Cloudflare Workers 的全功能 HTTP/HTTPS 代理服務，支援多種訪問方式，完全免費且易於使用。
+                   </p>
                 </div>
 
-                <!-- 表单卡片 -->
+                <!-- 表單卡片 -->
                 <div class="mt-16 rounded-2xl border border-zinc-100 p-6 dark:border-zinc-700/40">
                   <form id="urlForm" class="space-y-4">
                     <div>
                       <label for="targetUrl" class="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">
-                        输入目标网址
+                        輸入目標網址
                       </label>
                       <input
                         type="text"
@@ -364,7 +367,7 @@ function getRootHtml() {
                       type="submit"
                       class="w-full rounded-md bg-zinc-900 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-zinc-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 dark:bg-teal-500 dark:hover:bg-teal-400"
                     >
-                      开始代理
+                      開始代理
                     </button>
                   </form>
                 </div>
@@ -376,15 +379,15 @@ function getRootHtml() {
                   </h2>
                   <div class="space-y-4 text-sm text-zinc-600 dark:text-zinc-400">
                     <div class="rounded-lg bg-zinc-50 p-4 dark:bg-zinc-800/50">
-                      <div class="font-medium text-zinc-900 dark:text-zinc-100 mb-2">方式 1: Web 界面</div>
-                      <p>在上方输入框输入目标网址即可</p>
+                      <div class="font-medium text-zinc-900 dark:text-zinc-100 mb-2">方式 1: Web 介面</div>
+                      <p>在上方輸入框輸入目標網址即可</p>
                     </div>
                     <div class="rounded-lg bg-zinc-50 p-4 dark:bg-zinc-800/50">
-                      <div class="font-medium text-zinc-900 dark:text-zinc-100 mb-2">方式 2: 查询参数</div>
+                      <div class="font-medium text-zinc-900 dark:text-zinc-100 mb-2">方式 2: 查詢參數</div>
                       <code class="text-xs text-teal-600 dark:text-teal-400 break-all" id="method2"></code>
                     </div>
                     <div class="rounded-lg bg-zinc-50 p-4 dark:bg-zinc-800/50">
-                      <div class="font-medium text-zinc-900 dark:text-zinc-100 mb-2">方式 3: 路径方式</div>
+                      <div class="font-medium text-zinc-900 dark:text-zinc-100 mb-2">方式 3: 路徑方式</div>
                       <code class="text-xs text-teal-600 dark:text-teal-400 break-all" id="method3"></code>
                     </div>
                     <div class="rounded-lg bg-zinc-50 p-4 dark:bg-zinc-800/50">
@@ -394,37 +397,37 @@ function getRootHtml() {
                   </div>
                 </div>
 
-                <!-- 使用场景 -->
+                <!-- 使用場景 -->
                 <div class="mt-16 rounded-2xl border border-zinc-100 p-6 dark:border-zinc-700/40">
                   <h2 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-4">
-                    使用场景
+                    使用場景
                   </h2>
                   <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div class="rounded-lg bg-zinc-50 p-4 dark:bg-zinc-800/50">
                       <div class="font-medium text-zinc-900 dark:text-zinc-100 mb-2">📦 GitHub 文件加速</div>
                       <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">
-                        加速 raw.githubusercontent.com 文件下载
+                        加速 raw.githubusercontent.com 文件下載
                       </p>
                       <code class="text-xs text-teal-600 dark:text-teal-400 break-all" id="scene1"></code>
                     </div>
                     <div class="rounded-lg bg-zinc-50 p-4 dark:bg-zinc-800/50">
-                      <div class="font-medium text-zinc-900 dark:text-zinc-100 mb-2">🐳 Docker 镜像加速</div>
+                      <div class="font-medium text-zinc-900 dark:text-zinc-100 mb-2">🐳 Docker 鏡像加速</div>
                       <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">
-                        配置 Docker 镜像代理源
+                        配置 Docker 鏡像代理源
                       </p>
                       <code class="text-xs text-teal-600 dark:text-teal-400 break-all" id="scene2"></code>
                     </div>
                     <div class="rounded-lg bg-zinc-50 p-4 dark:bg-zinc-800/50">
                       <div class="font-medium text-zinc-900 dark:text-zinc-100 mb-2">🤖 OpenAI API 代理</div>
                       <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">
-                        代理 OpenAI API 请求
+                        代理 OpenAI API 請求
                       </p>
                       <code class="text-xs text-teal-600 dark:text-teal-400 break-all" id="scene3"></code>
                     </div>
                     <div class="rounded-lg bg-zinc-50 p-4 dark:bg-zinc-800/50">
                       <div class="font-medium text-zinc-900 dark:text-zinc-100 mb-2">🌍 通用 CORS 代理</div>
                       <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-2">
-                        解决前端跨域问题
+                        解決前端跨域問題
                       </p>
                       <code class="text-xs text-teal-600 dark:text-teal-400 break-all" id="scene4"></code>
                     </div>
@@ -437,7 +440,7 @@ function getRootHtml() {
                     <svg class="w-5 h-5 mr-2 text-teal-500" fill="currentColor" viewBox="0 0 20 20">
                       <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                     </svg>
-                    HTTPS 支持
+                    HTTPS 支援
                   </div>
                   <div class="flex items-center text-sm text-zinc-600 dark:text-zinc-400">
                     <svg class="w-5 h-5 mr-2 text-teal-500" fill="currentColor" viewBox="0 0 20 20">
@@ -449,13 +452,13 @@ function getRootHtml() {
                     <svg class="w-5 h-5 mr-2 text-teal-500" fill="currentColor" viewBox="0 0 20 20">
                       <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                     </svg>
-                    智能重定向
+                    智能重新導向
                   </div>
                   <div class="flex items-center text-sm text-zinc-600 dark:text-zinc-400">
                     <svg class="w-5 h-5 mr-2 text-teal-500" fill="currentColor" viewBox="0 0 20 20">
                       <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                     </svg>
-                    路径修复
+                    路徑修復
                   </div>
                 </div>
 
@@ -465,7 +468,7 @@ function getRootHtml() {
         </div>
       </main>
 
-      <!-- 页脚 -->
+                <!-- 頁腳 -->
       <footer class="mt-32">
         <div class="sm:px-8">
           <div class="mx-auto w-full max-w-7xl lg:px-8">
@@ -484,7 +487,7 @@ function getRootHtml() {
                       <svg class="w-5 h-5 mr-2 fill-zinc-500 transition group-hover:fill-teal-500 dark:fill-zinc-400 dark:group-hover:fill-teal-400" viewBox="0 0 24 24">
                         <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.475 2 2 6.588 2 12.253c0 4.537 2.862 8.369 6.838 9.727.5.09.687-.218.687-.487 0-.243-.013-1.05-.013-1.91C7 20.059 6.35 18.957 6.15 18.38c-.113-.295-.6-1.205-1.025-1.448-.35-.192-.85-.667-.013-.68.788-.012 1.35.744 1.538 1.051.9 1.551 2.338 1.116 2.912.846.088-.666.35-1.115.638-1.371-2.225-.256-4.55-1.14-4.55-5.062 0-1.115.387-2.038 1.025-2.756-.1-.256-.45-1.307.1-2.717 0 0 .837-.269 2.75 1.051.8-.23 1.65-.346 2.5-.346.85 0 1.7.115 2.5.346 1.912-1.333 2.75-1.05 2.75-1.05.55 1.409.2 2.46.1 2.716.637.718 1.025 1.628 1.025 2.756 0 3.934-2.337 4.806-4.562 5.062.362.32.675.936.675 1.897 0 1.371-.013 2.473-.013 2.82 0 .268.188.589.688.486a10.039 10.039 0 0 0 4.932-3.74A10.447 10.447 0 0 0 22 12.253C22 6.588 17.525 2 12 2Z"/>
                       </svg>
-                      在 GitHub 上给我们点赞
+                      在 GitHub 上為我們點贊
                     </a>
                   </div>
                 </div>
@@ -497,7 +500,7 @@ function getRootHtml() {
   </div>
 
   <script>
-    // 获取当前域名并填充示例
+    // 獲取当前域名并填充示例
     const currentOrigin = window.location.origin;
 
     // 填充使用方式示例
@@ -505,13 +508,13 @@ function getRootHtml() {
     document.getElementById('method3').textContent = currentOrigin + '/https://example.com';
     document.getElementById('method4').textContent = 'export HTTP_PROXY=' + currentOrigin;
 
-    // 填充使用场景示例
+    // 填充使用場景示例
     document.getElementById('scene1').textContent = currentOrigin + '/https://raw.githubusercontent.com/user/repo/main/file.txt';
     document.getElementById('scene2').textContent = currentOrigin + '/https://registry-1.docker.io';
     document.getElementById('scene3').textContent = currentOrigin + '/https://api.openai.com/v1/chat/completions';
     document.getElementById('scene4').textContent = 'fetch("' + currentOrigin + '/https://api.example.com/data")';
 
-    // 表单提交处理
+    // 表單提交處理
     document.getElementById('urlForm').addEventListener('submit', function(event) {
       event.preventDefault();
 
@@ -522,10 +525,10 @@ function getRootHtml() {
         targetUrl = 'https://' + targetUrl;
       }
 
-      // 构建代理 URL
+      // 建構代理 URL
       const proxyUrl = currentOrigin + '/' + encodeURIComponent(targetUrl);
 
-      // 在新标签页打开
+      // 在新標籤頁打開
       window.open(proxyUrl, '_blank');
     });
   </script>

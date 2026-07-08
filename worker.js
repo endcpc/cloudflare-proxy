@@ -51,9 +51,6 @@ function handleConnect(request) {
     }
   );
 }
-    }
-  );
-}
 
 /**
  * 處理代理請求

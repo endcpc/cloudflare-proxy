@@ -2,7 +2,7 @@ name = "poy"
 main = "worker.js"
 compatibility_date = "2024-01-01"
 
-account_id = "852fd505ca8b753af9c9a189fd86a710"
+# account_id = ""
 
 # Workers 設置
 workers_dev = true

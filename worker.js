@@ -202,7 +202,7 @@ async function handleHtmlContent(response, protocol, host, targetUrl) {
   const origin = targetUrl.origin;
 
   // 替換相對路徑：href="/" src="/" action="/"
-  const regex = /((href|src|action)=["\'])\/(?(?!\/).)/g;
+  const regex = /((href|src|action)=["'])\/((?!\/))/g;
   const modifiedText = originalText.replace(regex, `$1${protocol}//${host}/${origin}/$3`);
 
   return modifiedText;
@@ -517,7 +517,7 @@ function getRootHtml() {
 
       let targetUrl = document.getElementById('targetUrl').value.trim();
 
-      // 如果没有协议，自动添加 https://
+      // 如果沒有協議，自動添加 https://
       if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
         targetUrl = 'https://' + targetUrl;
       }
